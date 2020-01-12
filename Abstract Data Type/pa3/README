@@ -1,0 +1,21 @@
+//Zhijun Yang
+//zyang100
+//pa3
+README
+Sparse.java - Matrix ADT, the files are being input and output. Store the values and perform different operations, like addition, subtraction, multiplication, transposing, and scaling
+
+Matrix.java - Define Matrix as an object, using ADT of array of list. It has different methods in it, like addition, subtraction, multiplication, transposing, and scaling
+
+List.java - doubly linked list of ADT
+
+MatrixTest.java - Test Matrix operations
+
+ListTest.java - Test List
+
+Makefile - execute jar file
+
+
+
+
+
+

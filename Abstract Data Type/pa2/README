@@ -1,0 +1,10 @@
+//Zhijun Yang
+//zyang100
+//pa2
+
+README
+List.c - Doubly linked list ADT written in c.
+Lex.c - input and output file and sort it in alphabetical order.
+List.h - Header of List.c
+Makefile - execute jar file.
+ListClient - test List.c
