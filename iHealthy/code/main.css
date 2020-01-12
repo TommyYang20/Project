@@ -1,0 +1,176 @@
+@import url('https://fonts.googleapis.com/css?family=Lato|Raleway:400,600');
+
+
+/* ----------------------------------------
+Base Styles
+------------------------------------------- */
+* {
+    box-sizing: border-box;
+    /*border-radius: 25px;*/
+}
+
+body {
+	text-align: center;
+	margin: 0;
+	background-image: url("background.jpg"); 
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-attachment: fixed;
+  	background-size: cover;
+  	font-size: 14px;
+}
+
+button {
+	border: 1px solid black;
+	background-color: white;
+	padding: 10px;
+  border-radius: 25px;
+}
+
+
+
+
+/* ----------------------------------------
+Layout
+------------------------------------------- */
+/* For mobile phones: */
+[class*="col-"] {
+  width: 100%;
+}
+
+
+/* ----------------------------------------
+icon
+------------------------------------------- */
+.icon {
+	max-height: 25px;
+}
+
+
+/* ----------------------------------------
+NAV
+------------------------------------------- */
+nav {
+	text-align: center;
+}
+
+
+/* ----------------------------------------
+Header
+------------------------------------------- */
+h1 {
+	font-size: 100px;
+	font-family: Cursive;
+}
+
+/* ----------------------------------------
+Search
+------------------------------------------- */
+.topnav {
+	display: block;
+}
+input {
+	font-size: 20px;
+	margin: 10px;
+}
+
+.upload {
+	text-align: center;
+}
+
+
+
+/* ----------------------------------------
+Results
+------------------------------------------- */
+.resultPage {
+	background-image: none;
+}
+
+.resultPage form {
+  background-color: #91D52B;
+}
+
+
+.results {
+	text-align: left;
+	padding: 10px 0px 10px 25px;
+}
+
+.listing {
+	margin: 10px;
+}
+
+.medicineBox {
+	display: flex;
+	border: solid 2px black;
+}
+
+.medicineInfo {
+	margin: 10px;
+	padding: 0px 0px 0px 25px;
+}
+
+
+.foodListing1 {
+	display: flex;
+}
+
+.medicinePic img {
+	max-width: 100%;
+  height: auto;
+}
+
+/* ----------------------------------------
+History
+------------------------------------------- */
+
+
+
+@media only screen and (min-width: 768px) {
+  .col-10 {
+  	width: 10%;
+  }
+
+  .col-25 {
+  	width: 25%;
+  }
+
+  .col-33 {
+  	width: 33%;
+  }
+
+  .col-50 {
+  	width: 50%;
+  }
+
+  .col-66 {
+  	width: 66%;
+  }
+
+  .col-75 {
+  	width: 75%;
+  }
+
+  .col-100 {
+  	width: 100%;
+  }
+
+  body {
+  	font-size: 18px;
+  }
+
+  nav {
+  	text-align: right;
+  }
+
+  .topnav {
+  	display: inline;
+  }
+
+  .medicinePic img {
+    max-width: 400px;
+  }
+}
+
+	
