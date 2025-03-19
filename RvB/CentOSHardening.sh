@@ -84,5 +84,9 @@ curl -I http://scoring.sdc.cpp
 # ----- 13. Log Password Change Requests for SSH/FTP Users -----
 echo "[$(date)] Password changed for SSH & FTP users" >> /var/log/password_changes.log
 
+# ----- 14. Blocks execution in shared memory and enables KASLR for memory -----
+echo "tmpfs /run/shm tmpfs defaults,noexec,nosuid 0 0" >> /etc/fstab
+echo "kernel.randomize_va_space = 2" >> /etc/sysctl.conf
+
 echo "[!] REMINDER: Submit password change request for FTP & SSH users."
 echo "[+] CentOS hardening complete. Reboot recommended."
