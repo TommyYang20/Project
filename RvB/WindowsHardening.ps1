@@ -9,16 +9,17 @@ Set-LocalUser -Name "Administrator" -Password $NewPassword
 net user johncyberstrike ComplexP@ssw0rd!
 net user joecyberstrike ComplexP@ssw0rd!
 net user janecyberstrike ComplexP@ssw0rd!
+Write-Output "[!] REMINDER: Submit password change request for FTP & SSH users."
 
 # ----- 2. Ensure System is Joined to Domain -----
 Write-Output "[+] Checking domain membership..."
 $Domain = "cyberstrike.corps"
 $CurrentDomain = (Get-WmiObject Win32_ComputerSystem).Domain
 if ($CurrentDomain -ne $Domain) {
-    Write-Output "[!] System is not in domain $Domain. Joining now..."
-    Add-Computer -DomainName $Domain -Credential (Get-Credential) -Restart
+    Write-Output "[!] System is NOT joined to $Domain. Joining now..."
+    Add-Computer -DomainName $Domain -Credential (Get-Credential) -Force -Restart
 } else {
-    Write-Output "[+] System is already in domain $Domain."
+    Write-Output "[+] System is already part of $Domain."
 }
 
 # ----- 3. Remove Unauthorized Admin Users -----
@@ -55,35 +56,49 @@ Invoke-WebRequest -Uri $SysmonUrl -OutFile $SysmonPath
 Expand-Archive -Path $SysmonPath -DestinationPath "$env:TEMP\Sysmon"
 Start-Process -FilePath "$env:TEMP\Sysmon\sysmon.exe" -ArgumentList "-accepteula -i" -NoNewWindow -Wait
 
-# ----- 8. Perform System Backup -----
+# ----- 8. Ensure Critical Services Are Running -----
+Write-Output "[+] Checking and restarting critical Windows services..."
+$CriticalServices = @("DNS", "SMB", "ADWS", "W32Time")
+ForEach ($service in $CriticalServices) {
+    If ((Get-Service -Name $service).Status -ne "Running") {
+        Write-Output "Restarting $service..."
+        Start-Service -Name $service
+    }
+}
+
+# ----- 9. Perform System Backup -----
 Write-Output "[+] Creating system backup..."
 wbadmin start backup -backupTarget:D: -include:C: -allCritical -quiet
 
-# ----- 9. Monitor Open Ports -----
+# ----- 10. Monitor Open Ports -----
 Write-Output "[+] Checking open ports..."
 Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,State
 
-# ----- 10. Prevent Brute Force Attacks -----
+# ----- 11. Prevent Brute Force Attacks -----
 Write-Output "[+] Enabling account lockout policy..."
 net accounts /lockoutthreshold:3 /lockoutduration:30 /lockoutwindow:30
 
-# ----- 11. Remove Unnecessary Applications -----
+# ----- 12. Remove Unnecessary Applications -----
 Write-Output "[+] Removing unnecessary applications..."
 Get-AppxPackage *xbox* | Remove-AppxPackage
 Get-AppxPackage *bing* | Remove-AppxPackage
 Get-AppxPackage *solitaire* | Remove-AppxPackage
 Get-AppxPackage *skype* | Remove-AppxPackage
 
-# ----- 12. Harden RDP Access -----
+# ----- 13. Harden RDP Access -----
 Write-Output "[+] Hardening RDP access..."
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 1
 Write-Output "RDP access has been disabled."
 
-# ----- 13. Disable Guest Account -----
+# ----- 14. Restrict PowerShell Execution Policies -----
+Write-Output "[+] Restricting PowerShell execution policies..."
+Set-ExecutionPolicy RemoteSigned -Force
+
+# ----- 15. Disable Guest Account -----
 Write-Output "[+] Disabling Guest Account..."
 net user Guest /active:no
 
-# ----- 14. Check Scoring Engine Connectivity -----
+# ----- 16. Check Scoring Engine Connectivity -----
 Write-Output "[+] Checking connection to scoring engine..."
 Test-NetConnection -ComputerName scoring.sdc.cpp
 
