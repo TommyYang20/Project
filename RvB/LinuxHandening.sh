@@ -91,5 +91,8 @@ curl -I http://scoring.sdc.cpp
 # ----- 14. Log Password Change Requests for SSH/FTP Users -----
 echo "[$(date)] Password changed for SSH & FTP users" >> /var/log/password_changes.log
 
+# ----- 15. Enables AppArmor for process security -----
+sudo systemctl enable --now apparmor
+
 echo "[!] REMINDER: Submit password change request for FTP & SSH users."
 echo "[+] Ubuntu hardening complete. Reboot recommended."
