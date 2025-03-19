@@ -58,7 +58,7 @@ Start-Process -FilePath "$env:TEMP\Sysmon\sysmon.exe" -ArgumentList "-accepteula
 
 # ----- 8. Ensure Critical Services Are Running -----
 Write-Output "[+] Checking and restarting critical Windows services..."
-$CriticalServices = @("DNS", "SMB", "ADWS", "W32Time")
+$CriticalServices = @("DNS", "LanmanServer", "LanmanWorkstation", "ADWS", "W32Time")
 ForEach ($service in $CriticalServices) {
     If ((Get-Service -Name $service).Status -ne "Running") {
         Write-Output "Restarting $service..."
