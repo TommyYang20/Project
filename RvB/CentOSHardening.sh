@@ -1,72 +1,59 @@
+# =============================
+# Updated CentOSHardening.sh (for CentOS 7)
+# =============================
+
 #!/usr/bin/env bash
-# =============================
-# harden-centos.sh (for CentOS 7)
-# =============================
 
 # ----- 1. Update and Upgrade -----
 echo "[+] Updating and upgrading packages..."
 sudo yum -y update
 
-# ----- 2. Remove Unnecessary Packages (example placeholders) -----
+# ----- 2. Remove Unnecessary Packages -----
 echo "[+] Removing unnecessary packages..."
-sudo yum -y remove rsh-server telnet-server xinetd
+sudo yum -y remove rsh-server telnet-server xinetd cups bluetooth
 
 # ----- 3. Ensure SELinux is Enforcing -----
 echo "[+] Ensuring SELinux is enforcing..."
 sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
 setenforce 1
 
-# ----- 4. Configure Firewalld (or iptables) -----
-echo "[+] Configuring firewalld..."
-sudo systemctl start firewalld
-sudo systemctl enable firewalld
-
-# Default zone to drop inbound except known services
-sudo firewall-cmd --set-default-zone=public
-
-# Allow DNS (TCP/UDP 53)
-sudo firewall-cmd --permanent --add-port=53/tcp
-sudo firewall-cmd --permanent --add-port=53/udp
-
-# Allow HTTP (80) and HTTPS (443) for WordPress
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
-
-# Allow SSH
-sudo firewall-cmd --permanent --add-service=ssh
-
-sudo firewall-cmd --reload
-
-# ----- 5. Hardening SSH (sshd) -----
-echo "[+] Hardening SSH..."
-sudo sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sudo sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-# Adjust to your domain or key-based environment if needed.
-
-sudo systemctl restart sshd
-
-# ----- 6. Secure DNS (BIND) Example-----
-# Typically in /etc/named.conf or /etc/named/ named.conf.local
-# Make sure recursion is disabled if you only serve authoritative zones:
-# recursion no; 
-# or use ACLs to restrict recursion to internal subnets only.
-
-# ----- 7. Secure WordPress -----
-# This is largely done at the application level:
-# - Keep WP updated (core, themes, plugins).
-# - Remove default "admin" user, use strong passwords.
-# - Restrict wp-login.php access if possible.
-
-# Example: remove default themes:
-# rm -rf /var/www/html/wp-content/themes/twentyt*
-
-# ----- 8. Remove Unwanted User Accounts -----
-ALLOWED_USERS=("johncyberstrike" "joecyberstrike" "janecyberstrike")
+# ----- 4. Remove Unauthorized Users -----
+echo "[+] Removing unauthorized local accounts..."
 for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
     if [[ ! " ${ALLOWED_USERS[@]} " =~ " ${user} " ]]; then
-        echo "Removing unauthorized user: $user"
-        # sudo userdel -r "$user"
+        echo "Removing user: $user"
+        sudo userdel -r "$user"
     fi
 done
 
-echo "[+] CentOS 7 hardening script complete. A reboot is recommended."
+# ----- 5. Install OSSEC for Intrusion Detection -----
+echo "[+] Installing OSSEC HIDS..."
+curl -O https://updates.atomicorp.com/channels/atomic/supported/ossec-hids-3.7.0-6213.el7.art.x86_64.rpm
+sudo rpm -ivh ossec-hids-3.7.0-6213.el7.art.x86_64.rpm
+
+# ----- 6. Enable Audit Logging -----
+echo "[+] Configuring audit logs..."
+sudo systemctl enable auditd
+sudo systemctl start auditd
+echo "-w /etc/passwd -p wa -k passwd_changes" | sudo tee -a /etc/audit/rules.d/audit.rules
+echo "-w /var/log/auth.log -p wa -k auth_logs" | sudo tee -a /etc/audit/rules.d/audit.rules
+sudo augenrules --load
+
+# ----- 7. Backup System -----
+echo "[+] Creating system backup..."
+sudo tar -cvpzf /backup/linux_backup.tar.gz --exclude=/backup / --one-file-system
+
+# ----- 8. Monitor Open Ports -----
+echo "[+] Checking open ports..."
+sudo netstat -tulnp
+
+# ----- 9. Prevent Brute Force Attacks -----
+echo "[+] Implementing brute-force protection..."
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
+
+# ----- 10. Ensure Scoring Engine Connectivity -----
+echo "[+] Checking connection to scoring engine..."
+curl -I http://scoring.sdc.cpp
+
+echo "[+] CentOS hardening script complete. Reboot recommended."
