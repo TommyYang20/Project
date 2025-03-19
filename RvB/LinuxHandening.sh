@@ -1,3 +1,4 @@
+
 # =============================
 # Updated LinuxHandening.sh (for Ubuntu 22.04)
 # =============================
@@ -6,11 +7,11 @@
 
 # ----- 0. Variables -----
 ALLOWED_USERS=("johncyberstrike" "joecyberstrike" "janecyberstrike")
+INTERNAL_NETWORK="10.10.0.0/16"
 
 # ----- 1. Update & Upgrade -----
 echo "[+] Updating apt and upgrading packages..."
-sudo apt-get update -y
-sudo apt-get dist-upgrade -y
+sudo apt-get update -y && sudo apt-get dist-upgrade -y
 
 # ----- 2. Remove Unnecessary Packages -----
 echo "[+] Removing unnecessary packages..."
@@ -27,17 +28,17 @@ for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
 done
 
 # ----- 4. Configure Firewall (UFW) -----
-echo "[+] Configuring ufw firewall..."
+echo "[+] Configuring UFW firewall..."
 sudo apt-get install -y ufw
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow 22/tcp
-sudo ufw allow 123/udp
-sudo ufw allow 21/tcp
+sudo ufw allow from $INTERNAL_NETWORK to any port 22
+sudo ufw allow 123/udp  # NTP
+sudo ufw allow 21/tcp  # FTP
 sudo ufw enable
 
 # ----- 5. Hardening SSH -----
-echo "[+] Hardening SSH..."
+echo "[+] Hardening SSH access..."
 sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sudo sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sudo systemctl restart ssh
@@ -60,21 +61,35 @@ echo "-w /etc/passwd -p wa -k passwd_changes" | sudo tee -a /etc/audit/rules.d/a
 echo "-w /var/log/auth.log -p wa -k auth_logs" | sudo tee -a /etc/audit/rules.d/audit.rules
 sudo augenrules --load
 
-# ----- 9. Backup System -----
+# ----- 9. Ensure Critical Services Are Running -----
+echo "[+] Checking and restarting critical services..."
+SERVICES=("vsftpd" "ntp")
+for service in "${SERVICES[@]}"; do
+    if ! systemctl is-active --quiet "$service"; then
+        echo "Restarting $service..."
+        sudo systemctl restart "$service"
+    fi
+done
+
+# ----- 10. Backup System -----
 echo "[+] Creating system backup..."
 sudo tar -cvpzf /backup/linux_backup.tar.gz --exclude=/backup / --one-file-system
 
-# ----- 10. Monitor Open Ports -----
+# ----- 11. Monitor Open Ports -----
 echo "[+] Checking open ports..."
 sudo netstat -tulnp
 
-# ----- 11. Prevent Brute Force Attacks -----
+# ----- 12. Prevent Brute Force Attacks -----
 echo "[+] Implementing brute-force protection..."
 sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
 sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
 
-# ----- 12. Ensure Scoring Engine Connectivity -----
+# ----- 13. Ensure Scoring Engine Connectivity -----
 echo "[+] Checking connection to scoring engine..."
 curl -I http://scoring.sdc.cpp
 
+# ----- 14. Log Password Change Requests for SSH/FTP Users -----
+echo "[$(date)] Password changed for SSH & FTP users" >> /var/log/password_changes.log
+
+echo "[!] REMINDER: Submit password change request for FTP & SSH users."
 echo "[+] Ubuntu hardening complete. Reboot recommended."
