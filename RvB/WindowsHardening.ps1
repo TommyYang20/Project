@@ -102,4 +102,9 @@ net user Guest /active:no
 Write-Output "[+] Checking connection to scoring engine..."
 Test-NetConnection -ComputerName scoring.sdc.cpp
 
+# ----- 17. Prevents credential dumping, forces logout, blocks RDP users -----
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Lsa" /v RunAsPPL /t REG_DWORD /d 1 /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v MaxFailedLogins /t REG_DWORD /d 3 /f
+Remove-LocalGroupMember -Group "Remote Desktop Users"
+
 Write-Output "[+] Windows hardening script complete. Reboot recommended."
