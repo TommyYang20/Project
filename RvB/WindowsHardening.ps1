@@ -1,96 +1,90 @@
-# ==============================
-# harden-windows.ps1
-# ==============================
-# NOTE: Customize domain names, user lists, features, etc. for your environment.
+# =============================
+# Updated WindowsHardening.ps1 (for Windows 10, Server 2016, Server 2019)
+# =============================
 
-# ----- 0. Variables -----
-$domain = "cyberstrike.corps"
-$allowedLocalAdmins = @("Administrator","johncyberstrike","joecyberstrike","janecyberstrike","janicecyberstrike")
-# If your domain accounts appear in local Administrators group as DOMAIN\user, adjust logic as needed.
+# ----- 1. Change User Passwords -----
+Write-Output "[+] Changing default passwords..."
+$NewPassword = ConvertTo-SecureString "ComplexP@ssw0rd!" -AsPlainText -Force
+Set-LocalUser -Name "Administrator" -Password $NewPassword
+net user johncyberstrike ComplexP@ssw0rd!
+net user joecyberstrike ComplexP@ssw0rd!
+net user janecyberstrike ComplexP@ssw0rd!
 
-# ----- 1. Remove Unauthorized Local User Accounts -----
-Write-Host "Removing unauthorized local accounts..."
-$localUsers = Get-LocalUser
-foreach ($user in $localUsers) {
-    # Skip built-in accounts or domain-based SIDs
-    # If it's not in the $allowedLocalAdmins list and not a built-in system account, remove it.
-    if ($allowedLocalAdmins -notcontains $user.Name -and $user.Name -notmatch "^(WDAGUtility|DefaultAccount|Guest)$") {
-        Write-Host "Removing local account $($user.Name)"
-        # Uncomment to actually remove:
-        # Remove-LocalUser -Name $user.Name
+# ----- 2. Ensure System is Joined to Domain -----
+Write-Output "[+] Checking domain membership..."
+$Domain = "cyberstrike.corps"
+$CurrentDomain = (Get-WmiObject Win32_ComputerSystem).Domain
+if ($CurrentDomain -ne $Domain) {
+    Write-Output "[!] System is not in domain $Domain. Joining now..."
+    Add-Computer -DomainName $Domain -Credential (Get-Credential) -Restart
+} else {
+    Write-Output "[+] System is already in domain $Domain."
+}
+
+# ----- 3. Remove Unauthorized Admin Users -----
+Write-Output "[+] Checking and removing unauthorized admin users..."
+$AllowedAdmins = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike")
+$CurrentAdmins = Get-LocalGroupMember -Group "Administrators" | Select-Object -ExpandProperty Name
+ForEach ($User in $CurrentAdmins) {
+    If ($User -notin $AllowedAdmins) {
+        Write-Output "Removing unauthorized admin: $User"
+        Remove-LocalGroupMember -Group "Administrators" -Member $User
     }
 }
 
-# ----- 2. Ensure Only Authorized Accounts in Local Administrators Group -----
-Write-Host "Ensuring only authorized accounts in local Administrators group..."
-$adminGroup = [ADSI]"WinNT://./Administrators,group"
-$members = @($adminGroup.psbase.Invoke("Members")) | ForEach-Object {
-    New-Object System.DirectoryServices.DirectoryEntry($_)
-}
+# ----- 4. Disable Unused Services -----
+Write-Output "[+] Disabling unneeded services..."
+Stop-Service -Name "Spooler" -Force
+Set-Service -Name "Spooler" -StartupType Disabled
 
-foreach ($member in $members) {
-    # e.g. "WinNT://cyberstrike.corps/janicecyberstrike" or "WinNT://./Administrator"
-    $accountName = $member.Name
-    if ($allowedLocalAdmins -notcontains $accountName) {
-        Write-Host "Removing $($accountName) from local Administrators group..."
-        # Uncomment to actually remove:
-        # $adminGroup.Remove("WinNT://$accountName")
-    }
-}
+# ----- 5. Enforce Group Policy Updates -----
+Write-Output "[+] Forcing Group Policy updates..."
+gpupdate /force
 
-# ----- 3. Enable & Configure Windows Firewall (Inbound default block) -----
-Write-Host "Enabling Windows Firewall for all profiles..."
-netsh advfirewall set allprofiles state on
+# ----- 6. Enable Advanced Windows Logging -----
+Write-Output "[+] Configuring Windows Audit Policies..."
+auditpol /set /category:"Logon/Logoff" /success:enable /failure:enable
+auditpol /set /category:"Account Logon" /success:enable /failure:enable
+auditpol /set /category:"System" /success:enable /failure:enable
 
-# Example: allow inbound rules for critical domain services (DNS, SMB, Exchange, etc.)
-# Adjust to your actual ports & services.
+# ----- 7. Install Sysmon for Advanced Logging -----
+Write-Output "[+] Installing Sysmon for better logging..."
+$SysmonUrl = "https://download.sysinternals.com/files/Sysmon.zip"
+$SysmonPath = "$env:TEMP\Sysmon.zip"
+Invoke-WebRequest -Uri $SysmonUrl -OutFile $SysmonPath
+Expand-Archive -Path $SysmonPath -DestinationPath "$env:TEMP\Sysmon"
+Start-Process -FilePath "$env:TEMP\Sysmon\sysmon.exe" -ArgumentList "-accepteula -i" -NoNewWindow -Wait
 
-Write-Host "Allowing DNS inbound on TCP/UDP 53..."
-netsh advfirewall firewall add rule name="Allow DNS TCP 53" dir=in action=allow protocol=TCP localport=53
-netsh advfirewall firewall add rule name="Allow DNS UDP 53" dir=in action=allow protocol=UDP localport=53
+# ----- 8. Perform System Backup -----
+Write-Output "[+] Creating system backup..."
+wbadmin start backup -backupTarget:D: -include:C: -allCritical -quiet
 
-Write-Host "Allowing SMB (file sharing) inbound on TCP 445..."
-netsh advfirewall firewall add rule name="Allow SMB 445" dir=in action=allow protocol=TCP localport=445
+# ----- 9. Monitor Open Ports -----
+Write-Output "[+] Checking open ports..."
+Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,State
 
-Write-Host "Allowing Exchange inbound ports (example 25 for SMTP, 443, 587, etc.)..."
-# netsh advfirewall firewall add rule name="Allow SMTP" dir=in action=allow protocol=TCP localport=25
-# netsh advfirewall firewall add rule name="Allow HTTPS" dir=in action=allow protocol=TCP localport=443
-# Add other Exchange ports as needed.
+# ----- 10. Prevent Brute Force Attacks -----
+Write-Output "[+] Enabling account lockout policy..."
+net accounts /lockoutthreshold:3 /lockoutduration:30 /lockoutwindow:30
 
-# Remove extraneous or suspicious firewall rules
-Write-Host "Removing extraneous inbound firewall rules..."
-# Adjust logic as needed to remove rules that are known to be unwanted.
+# ----- 11. Remove Unnecessary Applications -----
+Write-Output "[+] Removing unnecessary applications..."
+Get-AppxPackage *xbox* | Remove-AppxPackage
+Get-AppxPackage *bing* | Remove-AppxPackage
+Get-AppxPackage *solitaire* | Remove-AppxPackage
+Get-AppxPackage *skype* | Remove-AppxPackage
 
-# ----- 4. Disable SMBv1 -----
-Write-Host "Disabling SMBv1..."
-Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
+# ----- 12. Harden RDP Access -----
+Write-Output "[+] Hardening RDP access..."
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 1
+Write-Output "RDP access has been disabled."
 
-# ----- 5. Basic Password Policies (Local) -----
-Write-Host "Setting local password policies..."
-# For domain-joined servers, do this in Group Policy at the domain level if possible.
-# Example local policy changes (adjust to your needs):
-# Minimum password length = 12, max password age = 60 days, etc.
-secedit /export /cfg C:\Temp\currentSecPolicy.inf
-(gc C:\Temp\currentSecPolicy.inf) | 
-    Foreach-Object {
-        $_ -replace "MinimumPasswordLength = .*","MinimumPasswordLength = 12" `
-           -replace "MaximumPasswordAge = .*","MaximumPasswordAge = 60"
-    } | Out-File C:\Temp\newSecPolicy.inf
+# ----- 13. Disable Guest Account -----
+Write-Output "[+] Disabling Guest Account..."
+net user Guest /active:no
 
-secedit /configure /db C:\Windows\security\local.sdb /cfg C:\Temp\newSecPolicy.inf /areas SECURITYPOLICY
+# ----- 14. Check Scoring Engine Connectivity -----
+Write-Output "[+] Checking connection to scoring engine..."
+Test-NetConnection -ComputerName scoring.sdc.cpp
 
-# ----- 6. Remove or Disable Unnecessary Windows Features -----
-Write-Host "Removing unnecessary Windows features..."
-# Example placeholders – adjust to fit your environment:
-# Uninstall-WindowsFeature -Name "Web-Server" -Restart:$false
-# Uninstall-WindowsFeature -Name "Fax-Services" -Restart:$false
-# ... etc.
-
-# ----- 7. Install Windows Updates -----
-Write-Host "Installing Windows Updates... (requires PSWindowsUpdate module)"
-# Example approach using PSWindowsUpdate if installed:
-# Install-Module PSWindowsUpdate -Force
-# Import-Module PSWindowsUpdate
-# Get-WindowsUpdate -AcceptAll -Install -AutoReboot
-
-Write-Host "Windows Server hardening script complete."
+Write-Output "[+] Windows hardening script complete. Reboot recommended."
