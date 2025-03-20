@@ -32,25 +32,36 @@ Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\W
 
 # --- 5. Restrict Administrator & Other Domain Accounts ---
 Write-Output "Updating passwords for key accounts..."
-
 $users = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
 $newPassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
-
 foreach ($user in $users) {
     Write-Output "Updating password for: $user"
     Set-LocalUser -Name $user -Password $newPassword
 }
 
-# --- 6. Remove Unauthorized Users ---
+# --- 6. Enable System Restore & Backups ---
+Write-Output "Enabling System Restore..."
+Enable-ComputerRestore -Drive "C:\"
+Write-Output "Creating system restore point..."
+Checkpoint-Computer -Description "Pre-Security Config" -RestorePointType "MODIFY_SETTINGS"
+
+# --- 7. Remove Unauthorized Users ---
 Write-Output "Removing unauthorized users..."
 $allowedUsers = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
 Get-LocalUser | Where-Object { $_.Name -notin $allowedUsers } | ForEach-Object {
     Remove-LocalUser -Name $_.Name
 }
 
-# --- 7. Enable Logging & Auditing ---
+# --- 8. Enable Logging & Auditing ---
 Write-Output "Enabling security logging..."
 auditevtwr -Enable
 Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "EnableLUA" -Value 1
+
+# --- 9. Service Integrity & Recovery ---
+Write-Output "Configuring auto-restart for critical services..."
+$criticalServices = @("DNS", "LanmanServer", "NTDS", "Exchange")
+foreach ($service in $criticalServices) {
+    sc.exe failure $service reset= 0 actions= restart/60000/restart/60000/restart/60000
+}
 
 Write-Output "Windows hardening complete. Reboot recommended."
