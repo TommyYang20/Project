@@ -47,8 +47,8 @@ check_exit "Installing ufw"
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
-# Remove any preexisting SSH rule that allows access from Anywhere
-existing_rules=$(sudo ufw status numbered | grep "22/tcp" | grep "Anywhere" | sed -E 's/^\[([0-9]+)\].*/\1/' | sort -rn)
+# Remove any preexisting SSH allow rules that permit access from anywhere (IPv4 and IPv6)
+existing_rules=$(sudo ufw status numbered | grep "22/tcp" | grep -E "Anywhere( \(v6\))?" | sed -E 's/^\[([0-9]+)\].*/\1/' | sort -rn)
 if [ -n "$existing_rules" ]; then
     for rule in $existing_rules; do
         log "[*] Deleting existing SSH rule #$rule"
@@ -56,7 +56,7 @@ if [ -n "$existing_rules" ]; then
     done
 fi
 
-# Now add the rule to allow SSH only from the internal network
+# Allow SSH only from the internal network
 sudo ufw allow from $INTERNAL_NETWORK to any port 22
 sudo ufw allow 123/udp  # NTP
 sudo ufw allow 21/tcp   # FTP
