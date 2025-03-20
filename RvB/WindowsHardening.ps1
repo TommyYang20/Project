@@ -1,6 +1,3 @@
-# Windows Hardening Script for Cyberstrike RvB
-# Applies to Windows Server 2016, 2019, and Windows 10
-
 # --- 1. Enforce Strong Password Policy ---
 Write-Output "Configuring password policies..."
 secedit /export /cfg C:\secpol.cfg
@@ -11,7 +8,7 @@ secedit /configure /db C:\Windows\Security\Local.sdb /cfg C:\secpol.cfg /areas S
 
 # --- 2. Disable Unnecessary Services ---
 Write-Output "Disabling unneeded services..."
-$services = @("RemoteRegistry", "Telnet", "FTP", "SMB1", "Spooler")
+$services = @("RemoteRegistry", "Telnet", "FTP", "Spooler")
 foreach ($service in $services) {
     Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
     Set-Service -Name $service -StartupType Disabled
@@ -19,11 +16,11 @@ foreach ($service in $services) {
 
 # --- 3. Configure Windows Firewall ---
 Write-Output "Configuring Windows Firewall..."
-New-NetFirewallRule -DisplayName "Allow DNS" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 53
-New-NetFirewallRule -DisplayName "Allow HTTP & HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443
-New-NetFirewallRule -DisplayName "Allow SMB" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445
-New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3389
-New-NetFirewallRule -DisplayName "Block Telnet & FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
+netsh advfirewall firewall add rule name="Allow DNS" dir=in action=allow protocol=UDP localport=53
+netsh advfirewall firewall add rule name="Allow HTTP & HTTPS" dir=in action=allow protocol=TCP localport=80,443
+netsh advfirewall firewall add rule name="Allow SMB" dir=in action=allow protocol=TCP localport=445
+netsh advfirewall firewall add rule name="Allow RDP" dir=in action=allow protocol=TCP localport=3389
+netsh advfirewall firewall add rule name="Block Telnet & FTP" dir=in action=block protocol=TCP localport=21,23
 
 # --- 4. Hardening Remote Desktop ---
 Write-Output "Securing RDP..."
@@ -36,32 +33,28 @@ $users = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrik
 $newPassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
 foreach ($user in $users) {
     Write-Output "Updating password for: $user"
-    Set-LocalUser -Name $user -Password $newPassword
+    net user $user CyberStrikeSecure!2024
 }
 
-# --- 6. Enable System Restore & Backups ---
-Write-Output "Enabling System Restore..."
-Enable-ComputerRestore -Drive "C:\"
-Write-Output "Creating system restore point..."
-Checkpoint-Computer -Description "Pre-Security Config" -RestorePointType "MODIFY_SETTINGS"
-
-# --- 7. Remove Unauthorized Users ---
+# --- 6. Remove Unauthorized Users ---
 Write-Output "Removing unauthorized users..."
 $allowedUsers = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
-Get-LocalUser | Where-Object { $_.Name -notin $allowedUsers } | ForEach-Object {
-    Remove-LocalUser -Name $_.Name
+foreach ($user in (Get-WmiObject Win32_UserAccount | Where-Object { $_.LocalAccount -eq $true }).Name) {
+    if ($user -notin $allowedUsers) {
+        Write-Output "Removing user: $user"
+        net user $user /delete
+    }
 }
 
-# --- 8. Enable Logging & Auditing ---
+# --- 7. Enable Logging & Auditing ---
 Write-Output "Enabling security logging..."
-auditevtwr -Enable
-Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "EnableLUA" -Value 1
+audpol /set /category:"Account Logon" /success:enable /failure:enable
 
-# --- 9. Service Integrity & Recovery ---
+# --- 8. Service Integrity & Recovery ---
 Write-Output "Configuring auto-restart for critical services..."
-$criticalServices = @("DNS", "LanmanServer", "NTDS", "Exchange")
+$criticalServices = @("DNS", "LanmanServer", "NTDS")
 foreach ($service in $criticalServices) {
     sc.exe failure $service reset= 0 actions= restart/60000/restart/60000/restart/60000
 }
 
-Write-Output "Windows hardening complete. Reboot recommended."
+Write-Output "Windows Server 2016 hardening complete. Reboot recommended."
