@@ -57,12 +57,22 @@ sudo firewall-cmd --permanent --add-service=https
 sudo firewall-cmd --permanent --add-service=dns
 sudo firewall-cmd --reload
 
-# ----- 6. Install OSSEC for Intrusion Detection -----
+# ----- 6. Install OSSEC via Atomicorp Repo -----
 log "[+] Installing OSSEC HIDS..."
-curl -O https://updates.atomicorp.com/channels/atomic/supported/ossec-hids-3.7.0-6213.el7.art.x86_64.rpm
-check_exit "Downloading OSSEC"
-sudo rpm -ivh ossec-hids-3.7.0-6213.el7.art.x86_64.rpm
+# 1. Add Atomicorp's repository
+wget -q -O - https://updates.atomicorp.com/installers/atomic | sudo bash
+check_exit "Configuring OSSEC repository"
+
+# 2. Update packages after adding repo
+sudo yum -y update
+check_exit "yum update after repo config"
+
+# 3. Install OSSEC (agent version)
+sudo yum -y install ossec-hids-agent
 check_exit "Installing OSSEC"
+
+# If you want the server version, replace the line above with:
+# sudo yum -y install ossec-hids-server
 
 # ----- 7. Enable Audit Logging -----
 log "[+] Configuring audit logs..."
