@@ -3,18 +3,17 @@
 # CentOS 7 Hardening Script
 # =============================
 
-# ----- 1. Update System -----
-echo "[+] Updating system..."
+# ----- 1. Create System Backup Before Changes -----
+echo "[+] Creating system backup..."
+sudo tar -czvf /root/pre_hardening_backup.tar.gz /etc /var/www /home
+
+# ----- 2. Update & Upgrade System -----
+echo "[+] Updating system packages..."
 sudo yum -y update
 
-# ----- 2. Remove Unnecessary Packages -----
+# ----- 3. Remove Unnecessary Packages -----
 echo "[+] Removing unnecessary packages..."
 sudo yum -y remove rsh-server telnet-server xinetd
-
-# ----- 3. Ensure SELinux is Enforcing -----
-echo "[+] Ensuring SELinux is enforcing..."
-sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
-setenforce 1
 
 # ----- 4. Configure Firewall (Firewalld) -----
 echo "[+] Configuring Firewalld..."
@@ -40,12 +39,7 @@ sudo sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sudo sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 sudo systemctl restart sshd
 
-# ----- 6. Secure WordPress -----
-echo "[+] Hardening WordPress..."
-# Example: remove default themes
-rm -rf /var/www/html/wp-content/themes/twentyt*
-
-# ----- 7. Remove Unauthorized Users -----
+# ----- 6. Remove Unauthorized Users -----
 echo "[+] Removing unauthorized users..."
 ALLOWED_USERS=("johncyberstrike" "joecyberstrike" "janecyberstrike")
 for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
@@ -55,4 +49,9 @@ for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
     fi
 done
 
-echo "[+] CentOS hardening complete. Reboot recommended."
+# ----- 7. Ensure SELinux is Enforcing -----
+echo "[+] Ensuring SELinux is enforcing..."
+sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+setenforce 1
+
+echo "[+] CentOS 7 hardening complete. Reboot recommended."
