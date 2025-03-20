@@ -81,8 +81,8 @@ check_exit "Installing/starting Fail2Ban"
 
 # ----- 7. Install OSSEC for Intrusion Detection -----
 log "[+] Installing OSSEC HIDS..."
-wget -qO - https://updates.atomicorp.com/channels/atomic/supported/ossec-hids-3.7.0.deb | sudo dpkg -i -
-check_exit "Installing OSSEC"
+wget -q -O - https://updates.atomicorp.com/installers/atomic | sudo bash
+check_exit "Configuring OSSEC repository"
 
 # ----- 8. Enable Audit Logging -----
 log "[+] Configuring audit logs..."
