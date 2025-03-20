@@ -1,3 +1,5 @@
+# Windows Hardening Script for Cyberstrike RvB (Windows Server 2016)
+
 # --- 1. Enforce Strong Password Policy ---
 Write-Output "Configuring password policies..."
 secedit /export /cfg C:\secpol.cfg
@@ -14,7 +16,12 @@ foreach ($service in $services) {
     Set-Service -Name $service -StartupType Disabled
 }
 
-# --- 3. Configure Windows Firewall ---
+# --- 3. Ensure Windows Firewall is Running ---
+Write-Output "Ensuring Windows Firewall service is running..."
+Set-Service -Name "MpsSvc" -StartupType Automatic
+Start-Service -Name "MpsSvc"
+
+# --- 4. Configure Windows Firewall ---
 Write-Output "Configuring Windows Firewall..."
 netsh advfirewall firewall add rule name="Allow DNS" dir=in action=allow protocol=UDP localport=53
 netsh advfirewall firewall add rule name="Allow HTTP & HTTPS" dir=in action=allow protocol=TCP localport=80,443
@@ -22,21 +29,20 @@ netsh advfirewall firewall add rule name="Allow SMB" dir=in action=allow protoco
 netsh advfirewall firewall add rule name="Allow RDP" dir=in action=allow protocol=TCP localport=3389
 netsh advfirewall firewall add rule name="Block Telnet & FTP" dir=in action=block protocol=TCP localport=21,23
 
-# --- 4. Hardening Remote Desktop ---
+# --- 5. Hardening Remote Desktop ---
 Write-Output "Securing RDP..."
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
-# --- 5. Restrict Administrator & Other Domain Accounts ---
+# --- 6. Restrict Administrator & Other Domain Accounts ---
 Write-Output "Updating passwords for key accounts..."
 $users = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
-$newPassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
 foreach ($user in $users) {
     Write-Output "Updating password for: $user"
     net user $user CyberStrikeSecure!2024
 }
 
-# --- 6. Remove Unauthorized Users ---
+# --- 7. Remove Unauthorized Users ---
 Write-Output "Removing unauthorized users..."
 $allowedUsers = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
 foreach ($user in (Get-WmiObject Win32_UserAccount | Where-Object { $_.LocalAccount -eq $true }).Name) {
@@ -46,11 +52,11 @@ foreach ($user in (Get-WmiObject Win32_UserAccount | Where-Object { $_.LocalAcco
     }
 }
 
-# --- 7. Enable Logging & Auditing ---
+# --- 8. Enable Logging & Auditing ---
 Write-Output "Enabling security logging..."
-audpol /set /category:"Account Logon" /success:enable /failure:enable
+auditpol /set /category:"Account Logon" /success:enable /failure:enable
 
-# --- 8. Service Integrity & Recovery ---
+# --- 9. Service Integrity & Recovery ---
 Write-Output "Configuring auto-restart for critical services..."
 $criticalServices = @("DNS", "LanmanServer", "NTDS")
 foreach ($service in $criticalServices) {
