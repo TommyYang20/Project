@@ -43,8 +43,20 @@ done
 log "[+] Configuring UFW firewall..."
 sudo apt-get install -y ufw
 check_exit "Installing ufw"
+
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
+
+# Remove any preexisting SSH rule that allows access from Anywhere
+existing_rules=$(sudo ufw status numbered | grep "22/tcp" | grep "Anywhere" | sed -E 's/^\[([0-9]+)\].*/\1/' | sort -rn)
+if [ -n "$existing_rules" ]; then
+    for rule in $existing_rules; do
+        log "[*] Deleting existing SSH rule #$rule"
+        sudo ufw delete $rule
+    done
+fi
+
+# Now add the rule to allow SSH only from the internal network
 sudo ufw allow from $INTERNAL_NETWORK to any port 22
 sudo ufw allow 123/udp  # NTP
 sudo ufw allow 21/tcp   # FTP
@@ -67,18 +79,9 @@ sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
 check_exit "Installing/starting Fail2Ban"
 
-# ----- 7. Install OSSEC (via Atomicorp Repo) -----
+# ----- 7. Install OSSEC for Intrusion Detection -----
 log "[+] Installing OSSEC HIDS..."
-# 1. Add Atomicorp's repository
-wget -q -O - https://updates.atomicorp.com/installers/atomic | sudo bash
-check_exit "Configuring OSSEC repository"
-
-# 2. Update package lists
-sudo apt-get update -y
-check_exit "apt-get update"
-
-# 3. Install OSSEC (agent version)
-sudo apt-get install -y ossec-hids-agent
+wget -qO - https://updates.atomicorp.com/channels/atomic/supported/ossec-hids-3.7.0.deb | sudo dpkg -i -
 check_exit "Installing OSSEC"
 
 # ----- 8. Enable Audit Logging -----
@@ -123,7 +126,7 @@ sudo iptables -C INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --
 log "[+] Checking connection to scoring engine..."
 curl -I http://scoring.sdc.cpp
 
-# ----- 14. Log Password Change Requests for SSH/FTP Users -----
+# ----- 14. Log Password Change Requests for SSH & FTP Users -----
 log "[+] Logging password change request..."
 echo "[$(date)] Password changed for SSH & FTP users" | sudo tee -a /var/log/password_changes.log
 
