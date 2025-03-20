@@ -18,15 +18,17 @@ foreach ($service in $services) {
 Write-Output "Ensuring Windows Firewall service is running..."
 Set-Service -Name "MpsSvc" -StartupType Automatic
 Start-Service -Name "MpsSvc"
+Start-Sleep -Seconds 5
 
-# --- 4. Configure Windows Firewall ---
+# --- 4. Configure Windows Firewall Using PowerShell ---
 Write-Output "Configuring Windows Firewall..."
 if ((Get-Service MpsSvc).Status -eq 'Running') {
-    netsh advfirewall firewall add rule name="Allow DNS" dir=in action=allow protocol=UDP localport=53
-    netsh advfirewall firewall add rule name="Allow HTTP & HTTPS" dir=in action=allow protocol=TCP localport=80,443
-    netsh advfirewall firewall add rule name="Allow SMB" dir=in action=allow protocol=TCP localport=445
-    netsh advfirewall firewall add rule name="Allow RDP" dir=in action=allow protocol=TCP localport=3389
-    netsh advfirewall firewall add rule name="Block Telnet & FTP" dir=in action=block protocol=TCP localport=21,23
+    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+    New-NetFirewallRule -DisplayName "Allow DNS" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 53
+    New-NetFirewallRule -DisplayName "Allow HTTP & HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443
+    New-NetFirewallRule -DisplayName "Allow SMB" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445
+    New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3389
+    New-NetFirewallRule -DisplayName "Block Telnet & FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
 } else {
     Write-Output "Windows Firewall service is not running. Skipping firewall rules."
 }
