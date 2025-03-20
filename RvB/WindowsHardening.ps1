@@ -33,7 +33,7 @@ Write-Host "[SUCCESS] Password policies applied."
 
 # ----- 4. Enable Windows Firewall and Secure Network Rules -----
 Write-Host "[INFO] Configuring Windows Firewall..."
-Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+netsh advfirewall set allprofiles state on
 Write-Host "[SUCCESS] Windows Firewall is enabled."
 
 # ----- 5. Disable SMBv1 (Legacy and Vulnerable) -----
@@ -43,11 +43,13 @@ Write-Host "[SUCCESS] SMBv1 disabled."
 
 # ----- 6. Restart Critical Services -----
 Write-Host "[INFO] Checking and restarting critical services..."
-$CriticalServices = @("LanmanServer", "LanmanWorkstation", "W32Time", "DNS", "ADWS", "MSExchangeIS")
+$CriticalServices = @("LanmanServer", "LanmanWorkstation", "W32Time", "DNS", "ADWS")
 foreach ($service in $CriticalServices) {
-    if ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -ne "Running") {
+    if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
         Write-Host "Restarting $service..."
         Start-Service -Name $service
+    } else {
+        Write-Host "[WARNING] Service $service not found. Skipping..."
     }
 }
 Write-Host "[SUCCESS] Critical services are running."
@@ -57,7 +59,11 @@ Write-Host "[INFO] Removing unnecessary software..."
 $UnwantedApps = @("XPS-Viewer", "Internet-Explorer-Optional-amd64")
 foreach ($App in $UnwantedApps) {
     Write-Host "Removing $App..."
-    Remove-WindowsFeature -Name $App -Restart
+    if (Get-WindowsFeature -Name $App) {
+        Uninstall-WindowsFeature -Name $App -Restart
+    } else {
+        Write-Host "[WARNING] Feature $App not found. Skipping..."
+    }
 }
 Write-Host "[SUCCESS] Unnecessary software removed."
 
@@ -67,6 +73,11 @@ auditpol /set /category:"Logon/Logoff" /success:enable /failure:enable
 Write-Host "[SUCCESS] Security Event Logging enabled."
 
 # ----- 9. Create System Backup -----
+Write-Host "[INFO] Checking if Windows Backup feature is installed..."
+if (!(Get-WindowsFeature -Name Windows-Server-Backup).Installed) {
+    Write-Host "[INFO] Installing Windows Backup feature..."
+    Install-WindowsFeature -Name Windows-Server-Backup -IncludeManagementTools
+}
 Write-Host "[INFO] Creating system backup..."
 wbadmin start backup -backupTarget:D: -include:C: -allCritical -quiet
 Write-Host "[SUCCESS] System backup created."
@@ -77,6 +88,6 @@ netstat -ano | findstr LISTEN
 
 # ----- 11. Ensure Scoring Engine Connectivity -----
 Write-Host "[INFO] Checking connection to scoring engine..."
-Test-NetConnection -ComputerName scoring.sdc.cpp
+ping scoring.sdc.cpp
 
 Write-Host "[INFO] Windows hardening script complete. Reboot recommended."
