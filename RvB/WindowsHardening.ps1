@@ -30,10 +30,16 @@ Write-Output "Securing RDP..."
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
-# --- 5. Restrict Administrator Account Usage ---
-Write-Output "Restricting local admin account..."
-Set-LocalUser -Name "Administrator" -Password (ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force)
-Disable-LocalUser -Name "Administrator"
+# --- 5. Restrict Administrator & Other Domain Accounts ---
+Write-Output "Updating passwords for key accounts..."
+
+$users = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
+$newPassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
+
+foreach ($user in $users) {
+    Write-Output "Updating password for: $user"
+    Set-LocalUser -Name $user -Password $newPassword
+}
 
 # --- 6. Remove Unauthorized Users ---
 Write-Output "Removing unauthorized users..."
