@@ -47,7 +47,7 @@ sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow from $INTERNAL_NETWORK to any port 22
 sudo ufw allow 123/udp  # NTP
-sudo ufw allow 21/tcp  # FTP
+sudo ufw allow 21/tcp   # FTP
 sudo ufw --force enable
 check_exit "Configuring ufw"
 
@@ -67,9 +67,18 @@ sudo systemctl enable fail2ban
 sudo systemctl start fail2ban
 check_exit "Installing/starting Fail2Ban"
 
-# ----- 7. Install OSSEC for Intrusion Detection -----
+# ----- 7. Install OSSEC (via Atomicorp Repo) -----
 log "[+] Installing OSSEC HIDS..."
-wget -qO - https://updates.atomicorp.com/channels/atomic/supported/ossec-hids-3.7.0.deb | sudo dpkg -i -
+# 1. Add Atomicorp's repository
+wget -q -O - https://updates.atomicorp.com/installers/atomic | sudo bash
+check_exit "Configuring OSSEC repository"
+
+# 2. Update package lists
+sudo apt-get update -y
+check_exit "apt-get update"
+
+# 3. Install OSSEC (agent version)
+sudo apt-get install -y ossec-hids-agent
 check_exit "Installing OSSEC"
 
 # ----- 8. Enable Audit Logging -----
