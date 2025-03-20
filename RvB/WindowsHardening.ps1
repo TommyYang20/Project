@@ -9,6 +9,7 @@ Set-LocalUser -Name "Administrator" -Password $NewPassword
 net user johncyberstrike ComplexP@ssw0rd!
 net user joecyberstrike ComplexP@ssw0rd!
 net user janecyberstrike ComplexP@ssw0rd!
+net user janicecyberstrike ComplexP@ssw0rd!
 Write-Output "[!] REMINDER: Submit password change request for FTP & SSH users."
 
 # ----- 2. Ensure System is Joined to Domain -----
@@ -24,7 +25,7 @@ if ($CurrentDomain -ne $Domain) {
 
 # ----- 3. Remove Unauthorized Admin Users -----
 Write-Output "[+] Checking and removing unauthorized admin users..."
-$AllowedAdmins = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike")
+$AllowedAdmins = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
 $CurrentAdmins = Get-LocalGroupMember -Group "Administrators" | Select-Object -ExpandProperty Name
 ForEach ($User in $CurrentAdmins) {
     If ($User -notin $AllowedAdmins) {
