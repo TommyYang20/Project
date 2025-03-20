@@ -1,3 +1,5 @@
+# Windows Hardening Script for Cyberstrike RvB (Windows Server 2016)
+
 # --- 1. Enforce Strong Password Policy ---
 Write-Output "Configuring password policies..."
 secedit /export /cfg C:\secpol.cfg
@@ -14,10 +16,10 @@ foreach ($service in $services) {
     Set-Service -Name $service -StartupType Disabled
 }
 
-# --- 3. Ensure Windows Firewall is Running ---
+# --- 3. Ensure Windows Firewall is Running and Prevent It from Stopping ---
 Write-Output "Ensuring Windows Firewall service is running..."
-Set-Service -Name "MpsSvc" -StartupType Automatic
-Start-Service -Name "MpsSvc"
+sc.exe config MpsSvc start= auto
+Start-Service -Name "MpsSvc" -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 5
 
 # --- 4. Configure Windows Firewall Using PowerShell ---
@@ -30,7 +32,20 @@ if ((Get-Service MpsSvc).Status -eq 'Running') {
     New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3389
     New-NetFirewallRule -DisplayName "Block Telnet & FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
 } else {
-    Write-Output "Windows Firewall service is not running. Skipping firewall rules."
+    Write-Output "Windows Firewall service is not running. Restarting Firewall service and retrying..."
+    Start-Service -Name "MpsSvc"
+    Start-Sleep -Seconds 5
+    if ((Get-Service MpsSvc).Status -eq 'Running') {
+        Write-Output "Firewall restarted. Applying rules..."
+        Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+        New-NetFirewallRule -DisplayName "Allow DNS" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 53
+        New-NetFirewallRule -DisplayName "Allow HTTP & HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443
+        New-NetFirewallRule -DisplayName "Allow SMB" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445
+        New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3389
+        New-NetFirewallRule -DisplayName "Block Telnet & FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
+    } else {
+        Write-Output "Failed to start Windows Firewall service. Skipping firewall rules."
+    }
 }
 
 # --- 5. Hardening Remote Desktop ---
