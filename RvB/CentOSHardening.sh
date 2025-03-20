@@ -97,7 +97,6 @@ sudo netstat -tulnp
 
 # ----- 11. Prevent Brute Force Attacks -----
 log "[+] Implementing brute-force protection..."
-# Check if iptables rules already exist before adding
 sudo iptables -C INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set 2>/dev/null || \
     sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
 sudo iptables -C INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP 2>/dev/null || \
