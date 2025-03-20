@@ -52,4 +52,16 @@ for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
     fi
 done
 
+# ----- 7. Enforce Strong Passwords & Change Defaults -----
+echo "[+] Updating user passwords..."
+for user in "${ALLOWED_USERS[@]}"; do
+    echo "$user:CyberStrikeSecure!2024" | sudo chpasswd
+    sudo chage -d 0 "$user"  # Force password change on next login
+done
+
+# Secure root password
+echo "[+] Changing root password..."
+echo "root:CyberStrikeSecure!2024" | sudo chpasswd
+sudo chage -d 0 root  # Force root password change
+
 echo "[+] Ubuntu hardening complete. Reboot recommended."
