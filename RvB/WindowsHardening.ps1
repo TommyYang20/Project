@@ -1,5 +1,3 @@
-# Windows Hardening Script for Cyberstrike RvB (Windows Server 2016)
-
 # --- 1. Enforce Strong Password Policy ---
 Write-Output "Configuring password policies..."
 secedit /export /cfg C:\secpol.cfg
@@ -23,11 +21,15 @@ Start-Service -Name "MpsSvc"
 
 # --- 4. Configure Windows Firewall ---
 Write-Output "Configuring Windows Firewall..."
-netsh advfirewall firewall add rule name="Allow DNS" dir=in action=allow protocol=UDP localport=53
-netsh advfirewall firewall add rule name="Allow HTTP & HTTPS" dir=in action=allow protocol=TCP localport=80,443
-netsh advfirewall firewall add rule name="Allow SMB" dir=in action=allow protocol=TCP localport=445
-netsh advfirewall firewall add rule name="Allow RDP" dir=in action=allow protocol=TCP localport=3389
-netsh advfirewall firewall add rule name="Block Telnet & FTP" dir=in action=block protocol=TCP localport=21,23
+if ((Get-Service MpsSvc).Status -eq 'Running') {
+    netsh advfirewall firewall add rule name="Allow DNS" dir=in action=allow protocol=UDP localport=53
+    netsh advfirewall firewall add rule name="Allow HTTP & HTTPS" dir=in action=allow protocol=TCP localport=80,443
+    netsh advfirewall firewall add rule name="Allow SMB" dir=in action=allow protocol=TCP localport=445
+    netsh advfirewall firewall add rule name="Allow RDP" dir=in action=allow protocol=TCP localport=3389
+    netsh advfirewall firewall add rule name="Block Telnet & FTP" dir=in action=block protocol=TCP localport=21,23
+} else {
+    Write-Output "Windows Firewall service is not running. Skipping firewall rules."
+}
 
 # --- 5. Hardening Remote Desktop ---
 Write-Output "Securing RDP..."
@@ -54,7 +56,7 @@ foreach ($user in (Get-WmiObject Win32_UserAccount | Where-Object { $_.LocalAcco
 
 # --- 8. Enable Logging & Auditing ---
 Write-Output "Enabling security logging..."
-auditpol /set /category:"Account Logon" /success:enable /failure:enable
+auditpol /set /subcategory:"Logon" /success:enable /failure:enable
 
 # --- 9. Service Integrity & Recovery ---
 Write-Output "Configuring auto-restart for critical services..."
