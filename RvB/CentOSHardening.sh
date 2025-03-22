@@ -3,6 +3,9 @@
 # CentOS 7 Hardening Script
 # =============================
 
+sudo yum install -y bind bind-utils
+sudo yum install -y httpd
+
 # ----- 1. Update System -----
 echo "[+] Updating system..."
 sudo yum -y update
