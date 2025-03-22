@@ -29,6 +29,31 @@ foreach ($user in (Get-WmiObject Win32_UserAccount | Where-Object { $_.LocalAcco
         net user $user /delete
     }
 }
+# --- 5.2. Remove Unauthorized Local Users ---
+Write-Host "[+] Checking local users..."
+$allowedUsers = $allowedAdmins
+Get-LocalUser | Where-Object {
+    $_.Enabled -eq $true -and $_.SID -like "S-1-5-21*" -and ($allowedUsers -notcontains $_.Name)
+} | ForEach-Object {
+    Write-Host "[-] Removing unauthorized user: $($_.Name)"
+    Remove-LocalUser -Name $_.Name
+}
+
+# --- 5.1. Enforce Allowed Admins ---
+Write-Host "[+] Checking local administrators..."
+$allowedAdmins = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
+$adminGroup = [ADSI]"WinNT://./Administrators,group"
+$members = @($adminGroup.psbase.Invoke("Members")) | ForEach-Object {
+    $_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)
+}
+foreach ($member in $members) {
+    if ($allowedAdmins -notcontains $member) {
+        Write-Host "[-] Removing unauthorized admin: $member"
+        net localgroup Administrators $member /delete
+    }
+}
+
+
 
 # --- 6. Configure Auto-Restart for Critical Services ---
 $criticalServices = @("DNS", "LanmanServer", "NTDS")
@@ -42,5 +67,29 @@ foreach ($service in $unnecessaryServices) {
     Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
     Set-Service -Name $service -StartupType Disabled
 }
+
+# --- 8. Windows Update (Applies to all systems) ---
+Write-Host "[+] Installing Windows Updates..."
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Install-Module PSWindowsUpdate -Force
+Import-Module PSWindowsUpdate
+Get-WindowsUpdate -AcceptAll -Install -AutoReboot
+
+# --- 9. Enable & Start Critical Services ---
+Write-Host "[+] Starting scored critical services if present..."
+$criticalServices = @("DNS", "NTDS", "MSExchangeIS", "LanmanServer")
+foreach ($svc in $criticalServices) {
+    $service = Get-Service -Name $svc -ErrorAction SilentlyContinue
+    if ($service) {
+        Set-Service -Name $svc -StartupType Automatic
+        Start-Service -Name $svc
+        Write-Host "[+] $svc is running and set to auto-start."
+    }
+}
+
+# --- 10. Disable Risky Services (Optional) ---
+Write-Host "[+] Disabling unnecessary/risky services..."
+Stop-Service -Name 'RemoteRegistry' -Force -ErrorAction SilentlyContinue
+Set-Service -Name 'RemoteRegistry' -StartupType Disabled -ErrorAction SilentlyContinue
 
 Write-Output "Windows Server 2016 hardening complete. Reboot recommended."
