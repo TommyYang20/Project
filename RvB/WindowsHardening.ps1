@@ -67,15 +67,15 @@ Get-LocalUser | Where-Object {
 
 # --- [7] Update Passwords for Allowed Users ---
 #Write-Host "[+] Updating passwords for allowed users..."
-$securePassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
-foreach ($user in $allowedAdmins) {
-    try {
-        Set-LocalUser -Name $user -Password $securePassword
-        Write-Host "[✓] Password updated for: $user"
-    } catch {
-        Write-Host "[!] Could not update password for: $user"
-    }
-}#
+#$securePassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
+#foreach ($user in $allowedAdmins) {
+#    try {
+#        Set-LocalUser -Name $user -Password $securePassword
+#        Write-Host "[✓] Password updated for: $user"
+#    } catch {
+#        Write-Host "[!] Could not update password for: $user"
+#    }
+#}
 
 # --- [8] Configure Auto-Restart for Critical Services ---
 Write-Host "[+] Setting failure recovery for critical services..."
