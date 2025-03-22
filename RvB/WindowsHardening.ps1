@@ -55,7 +55,7 @@ foreach ($member in $members) {
 }
 
 # --- [6] Remove Unauthorized Local Users ---
-Write-Host "[+] Removing unauthorized local users..."
+Write-Host " Removing unauthorized local users..."
 Get-LocalUser | Where-Object {
     $_.Enabled -eq $true -and $_.SID -like "S-1-5-21*" -and ($allowedAdmins -notcontains $_.Name)
 } | ForEach-Object {
@@ -64,7 +64,7 @@ Get-LocalUser | Where-Object {
 }
 
 # --- [8] Configure Auto-Restart for Critical Services ---
-Write-Host "[+] Setting failure recovery for critical services..."
+Write-Host " Setting failure recovery for critical services..."
 $criticalServices = @("LanmanServer")
 if ($includeDNS) { $criticalServices += "DNS" }
 if ($includeNTDS) { $criticalServices += "NTDS" }
@@ -73,7 +73,7 @@ foreach ($service in $criticalServices) {
 }
 
 # --- [9] Remove & Disable Unnecessary Services ---
-Write-Host "[+] Disabling unnecessary/risky services..."
+Write-Host " Disabling unnecessary/risky services..."
 $unnecessaryServices = @("RemoteRegistry", "Telnet", "FTP", "Spooler")
 foreach ($service in $unnecessaryServices) {
     Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
@@ -81,14 +81,14 @@ foreach ($service in $unnecessaryServices) {
 }
 
 # --- [10] Install Windows Updates ---
-Write-Host "[+] Installing Windows Updates..."
+Write-Host "Installing Windows Updates..."
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
 Install-Module PSWindowsUpdate -Force -Confirm:$false | Out-Null
 Import-Module PSWindowsUpdate
 Get-WindowsUpdate -AcceptAll -Install -AutoReboot
 
 # --- [11] Ensure Critical Services are Running ---
-Write-Host "[+] Ensuring critical services are running..."
+Write-Host "Ensuring critical services are running..."
 foreach ($svc in $criticalServices) {
     $service = Get-Service -Name $svc -ErrorAction SilentlyContinue
     if ($service) {
