@@ -37,7 +37,7 @@ New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -P
 New-NetFirewallRule -DisplayName "Block Telnet and FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
 
 # --- [4] Harden Remote Desktop ---
-Write-Host "[+] Securing RDP settings..."
+Write-Host "Securing RDP settings..."
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
@@ -98,5 +98,5 @@ foreach ($svc in $criticalServices) {
     }
 }
 
-Write-Host "[✓] Windows hardening complete. Rebooting..."
+Write-Host "Windows hardening complete. Rebooting"
 Restart-Computer -Force
