@@ -3,6 +3,7 @@
 # =============================
 
 $allowedAdmins = @("Administrator", "johncyberstrike", "joecyberstrike", "janecyberstrike", "janicecyberstrike")
+
 # --- [0] Detect OS Version ---
 $osVersion = (Get-CimInstance Win32_OperatingSystem).Caption
 Write-Host "[+] Detected OS: $osVersion"
@@ -14,17 +15,14 @@ if ($osVersion -match "2016") {
 } elseif ($osVersion -match "2019") {
     $includeDNS = $true
     $includeNTDS = $true
-} elseif ($osVersion -match "Windows 10") {
-    Write-Host "[!] Skipping domain service configurations on Windows 10."
-}
-
-if ($osVersion -match "2019") {
     $exchange = Get-Service -Name "MSExchangeIS" -ErrorAction SilentlyContinue
     if ($exchange) {
         Set-Service -Name "MSExchangeIS" -StartupType Automatic
         Start-Service -Name "MSExchangeIS"
         Write-Host "[✓] MSExchangeIS is running and set to auto-start."
     }
+} elseif ($osVersion -match "Windows 10") {
+    Write-Host "[!] Skipping domain service configurations on Windows 10."
 }
 
 # --- 1. Ensure Windows Firewall is Running ---
@@ -33,10 +31,10 @@ Start-Service -Name MpsSvc
 
 # --- 2. Configure Windows Firewall Rules ---
 New-NetFirewallRule -DisplayName "Allow DNS" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 53
-New-NetFirewallRule -DisplayName "Allow HTTP & HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443
+New-NetFirewallRule -DisplayName "Allow HTTP and HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 80,443
 New-NetFirewallRule -DisplayName "Allow SMB" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 445
 New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3389
-New-NetFirewallRule -DisplayName "Block Telnet & FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
+New-NetFirewallRule -DisplayName "Block Telnet and FTP" -Direction Inbound -Action Block -Protocol TCP -LocalPort 21,23
 
 # --- [4] Harden Remote Desktop ---
 Write-Host "[+] Securing RDP settings..."
@@ -65,18 +63,6 @@ Get-LocalUser | Where-Object {
     Remove-LocalUser -Name $_.Name
 }
 
-# --- [7] Update Passwords for Allowed Users ---
-#Write-Host "[+] Updating passwords for allowed users..."
-#$securePassword = ConvertTo-SecureString "CyberStrikeSecure!2024" -AsPlainText -Force
-#foreach ($user in $allowedAdmins) {
-#    try {
-#        Set-LocalUser -Name $user -Password $securePassword
-#        Write-Host "[✓] Password updated for: $user"
-#    } catch {
-#        Write-Host "[!] Could not update password for: $user"
-#    }
-#}
-
 # --- [8] Configure Auto-Restart for Critical Services ---
 Write-Host "[+] Setting failure recovery for critical services..."
 $criticalServices = @("LanmanServer")
@@ -97,7 +83,7 @@ foreach ($service in $unnecessaryServices) {
 # --- [10] Install Windows Updates ---
 Write-Host "[+] Installing Windows Updates..."
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-Install-Module PSWindowsUpdate -Force -Confirm:$false | Out-Null
+Install-Module PSWindowsUpdate -Force -Confirm:\$false | Out-Null
 Import-Module PSWindowsUpdate
 Get-WindowsUpdate -AcceptAll -Install -AutoReboot
 
