@@ -56,7 +56,6 @@ done
 echo "[+] Updating user passwords..."
 for user in "${ALLOWED_USERS[@]}"; do
     echo "$user:CyberStrikeSecure!2024" | sudo chpasswd
-    sudo chage -d 0 "$user"  # Force password change on next login
 done
 
 # ----- 7. Ensure Only Authorized Admin (johncyberstrike) -----
