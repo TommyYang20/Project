@@ -83,7 +83,7 @@ foreach ($service in $unnecessaryServices) {
 # --- [10] Install Windows Updates ---
 Write-Host "[+] Installing Windows Updates..."
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-Install-Module PSWindowsUpdate -Force -Confirm:\$false | Out-Null
+Install-Module PSWindowsUpdate -Force -Confirm:$false | Out-Null
 Import-Module PSWindowsUpdate
 Get-WindowsUpdate -AcceptAll -Install -AutoReboot
 
