@@ -44,7 +44,7 @@ sudo systemctl restart vsftpd
 
 # ----- 6. Remove Unauthorized Users -----
 echo "[+] Removing unauthorized users..."
-ALLOWED_USERS=("johncyberstrike" "joecyberstrike" "janecyberstrike")
+ALLOWED_USERS=("johncyberstrike" "joe" "jane")
 for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
     if [[ ! " ${ALLOWED_USERS[@]} " =~ " ${user} " ]]; then
         echo "Removing user: $user"
@@ -58,6 +58,23 @@ for user in "${ALLOWED_USERS[@]}"; do
     echo "$user:CyberStrikeSecure!2024" | sudo chpasswd
     sudo chage -d 0 "$user"  # Force password change on next login
 done
+
+# ----- 7.1. Ensure Only Authorized Admins -----
+echo "[+] Checking sudoers group..."
+for admin in $(getent group sudo | cut -d: -f4 | tr ',' ' '); do
+    if [[ ! " ${ALLOWED_USERS[@]} " =~ " ${admin} " ]]; then
+        echo "Removing $admin from sudo group..."
+        sudo deluser "$admin" sudo
+    fi
+done
+
+# ----- 8. Ensure Critical Services Are Running -----
+echo "[+] Ensuring NTP and FTP services are running..."
+sudo systemctl enable ntp
+sudo systemctl start ntp
+
+sudo systemctl enable vsftpd
+sudo systemctl start vsftpd
 
 # Secure root password
 echo "[+] Changing root password..."
