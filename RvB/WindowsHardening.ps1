@@ -18,6 +18,15 @@ if ($osVersion -match "2016") {
     Write-Host "[!] Skipping domain service configurations on Windows 10."
 }
 
+if ($osVersion -match "2019") {
+    $exchange = Get-Service -Name "MSExchangeIS" -ErrorAction SilentlyContinue
+    if ($exchange) {
+        Set-Service -Name "MSExchangeIS" -StartupType Automatic
+        Start-Service -Name "MSExchangeIS"
+        Write-Host "[✓] MSExchangeIS is running and set to auto-start."
+    }
+}
+
 # --- 1. Ensure Windows Firewall is Running ---
 Set-Service -Name MpsSvc -StartupType Automatic
 Start-Service -Name MpsSvc
