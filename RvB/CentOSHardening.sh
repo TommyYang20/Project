@@ -55,12 +55,29 @@ for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
     fi
 done
 
+# ----- 7.1. Ensure Only Authorized Admins -----
+echo "[+] Checking wheel group (admins)..."
+for admin in $(getent group wheel | cut -d: -f4 | tr ',' ' '); do
+    if [[ ! " ${ALLOWED_USERS[@]} " =~ " ${admin} " ]]; then
+        echo "Removing $admin from wheel group..."
+        sudo gpasswd -d "$admin" wheel
+    fi
+done
+
 # ----- 8. Enforce Strong Passwords & Change Defaults -----
 echo "[+] Updating user passwords..."
 for user in "${ALLOWED_USERS[@]}"; do
     echo "$user:CyberStrikeSecure!2024" | sudo chpasswd
     sudo chage -d 0 "$user"  # Force password change on next login
 done
+
+# ----- 9. Ensure Critical Services Are Running -----
+echo "[+] Ensuring DNS and HTTPS (Apache/WordPress) services are running..."
+sudo systemctl enable named
+sudo systemctl start named
+
+sudo systemctl enable httpd
+sudo systemctl start httpd
 
 # Secure root password
 echo "[+] Changing root password..."
